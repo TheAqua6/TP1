@@ -1,8 +1,79 @@
 ---
 - hosts: all
   become: yes
+
   tasks:
-    - name: Install package GIT
+    - name: Install Git
       package:
         name: git
-        state: latest 
+        state: latest
+
+    - name: Clone repo Golang-myip
+      git:
+       repo: https://github.com/BastienBalaud/golang-myip.git
+       dest: /golang-myip
+       clone: yes
+       update: yes
+
+    - name: Modif port 80
+      ansible.builtin.shell:
+       cmd: sed -i 's/args.Port = 8080/args.Port = 80/g' /golang-myip/server.go
+
+    - name: Install make
+      ansible.builtin.shell:
+       cmd: yum install make.x86_64 -y
+
+    - name: Install Go
+      ansible.builtin.shell:
+       cmd: yum install golang.x86_64 -y
+
+    - name: Execut Makefile
+      ansible.builtin.shell:
+       cmd: make
+       chdir: /golang-myip
+
+    - name: Create golang-myip.service dans tmp
+      ansible.builtin.shell:
+       cmd: touch /tmp/golang-myip.service
+
+    - name: Ajout service
+      shell: |
+       echo "[Unit]
+       Description=Service système Golang-MyIP
+       After=network.target
+       [Service]
+       WorkingDirectory=/golang-myip/
+       ExecStart=/golang-myip/build/server.x86_64
+       [Install]
+       WantedBy=multi-user.target" >> /tmp/golang-myip.service
+
+    - name: Move golang-myip.service
+      ansible.builtin.shell:
+       cmd: mv /tmp/golang-myip.service /etc/systemd/system/
+
+    - name: Change SELinux
+      ansible.builtin.shell:
+       cmd: setenforce 0
+
+    - name: Reboot Daemon
+      ansible.builtin.shell:
+       cmd: systemctl daemon-reload
+
+    - name: Start service Golang-MyIP
+      ansible.builtin.shell:
+       cmd: systemctl start golang-myip
+
+    - name: Enable service Golang-MyIP
+      ansible.builtin.shell:
+       cmd: systemctl enable golang-myip
+
+    - name: Permissive SELinux
+      ansible.posix.selinux:
+       policy: targeted
+       state: permissive
+
+    - name: Clés Bastien
+      authorized_key:
+       user: root
+       state: present
+       key: https://github.com/BastienBalaud.keys

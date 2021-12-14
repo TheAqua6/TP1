@@ -1,0 +1,14 @@
+[Unit]
+Description=Service système Golang-MyIP
+
+Before=network-pre.target
+After=network.target
+
+[Service]
+
+WorkingDirectory=/golang-myip/
+ExecStart=/golang-myip/build/server.x86_64
+
+[Install]
+
+WantedBy=multi-user.target
