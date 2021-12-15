@@ -3,6 +3,11 @@
   become: yes
 
   tasks:
+    - name: Enable service sshd
+      ansible.builtin.service:
+        name: sshd.service
+        enabled: yes
+
     - name: Install Git
       package:
         name: git
@@ -19,53 +24,43 @@
       ansible.builtin.shell:
        cmd: sed -i 's/args.Port = 8080/args.Port = 80/g' /golang-myip/server.go
 
-    - name: Install make
-      ansible.builtin.shell:
-       cmd: yum install make.x86_64 -y
+    - name : Install Make package
+      package:
+        name: make 
+        state: latest
 
-    - name: Install Go
-      ansible.builtin.shell:
-       cmd: yum install golang.x86_64 -y
+    - name: Install package GO
+      package:
+        name: go
+        state: latest
 
     - name: Execut Makefile
       ansible.builtin.shell:
        cmd: make
        chdir: /golang-myip
 
-    - name: Create golang-myip.service dans tmp
-      ansible.builtin.shell:
-       cmd: touch /tmp/golang-myip.service
-
-    - name: Ajout service
-      shell: |
-       echo "[Unit]
-       Description=Service système Golang-MyIP
-       After=network.target
-       [Service]
-       WorkingDirectory=/golang-myip/
-       ExecStart=/golang-myip/build/server.x86_64
-       [Install]
-       WantedBy=multi-user.target" >> /tmp/golang-myip.service
-
-    - name: Move golang-myip.service
-      ansible.builtin.shell:
-       cmd: mv /tmp/golang-myip.service /etc/systemd/system/
+    - name: Create golang directoryls -la
+      ansible.builtin.template:
+        src: template/golang.service
+        dest: /etc/systemd/system/golang.service
 
     - name: Change SELinux
       ansible.builtin.shell:
        cmd: setenforce 0
 
-    - name: Reboot Daemon
-      ansible.builtin.shell:
-       cmd: systemctl daemon-reload
+    - name: Reboot Systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
 
-    - name: Start service Golang-MyIP
-      ansible.builtin.shell:
-       cmd: systemctl start golang-myip
+    - name: Start service golang
+      ansible.builtin.service:
+        name: golang.service
+        state: started
 
-    - name: Enable service Golang-MyIP
-      ansible.builtin.shell:
-       cmd: systemctl enable golang-myip
+    - name: Enable service golang
+      ansible.builtin.service:
+        name: golang.service
+        enabled: yes
 
     - name: Permissive SELinux
       ansible.posix.selinux:
